@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gran Circuito Sudamericano 2026</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,sans-serif;overflow:hidden;height:100vh;background:#1a1a1a}
+#map{width:100%;height:100vh;z-index:1}
+
+.title-bar{
+  position:fixed;top:0;left:0;right:0;z-index:1000;
+  padding:14px 20px;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.3) 70%,transparent 100%);
+  pointer-events:none;
+}
+.title-bar h1{font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.3px;text-shadow:0 1px 4px rgba(0,0,0,0.5)}
+.title-bar .sub{font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;font-weight:400;letter-spacing:0.5px}
+
+.legend{
+  position:fixed;bottom:28px;left:16px;z-index:1000;
+  background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);
+  border-radius:10px;padding:12px 16px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.15);
+  display:flex;flex-direction:column;gap:6px;font-size:12px;color:#333;
+}
+.legend-row{display:flex;align-items:center;gap:8px}
+.legend-line{width:28px;height:3px;border-radius:2px}
+
+.sidebar{
+  position:fixed;top:0;right:0;width:380px;height:100vh;z-index:1001;
+  background:#fff;transform:translateX(100%);
+  transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  overflow-y:auto;overflow-x:hidden;
+  box-shadow:-4px 0 20px rgba(0,0,0,0.15);
+}
+.sidebar.open{transform:translateX(0)}
+
+.sb-close{
+  position:sticky;top:0;z-index:5;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 18px;background:linear-gradient(to bottom,#fff 80%,transparent);
+}
+.sb-close-btn{
+  width:34px;height:34px;border:none;background:#f1f1f1;border-radius:50%;
+  cursor:pointer;font-size:18px;color:#666;display:flex;align-items:center;justify-content:center;transition:all 0.15s;
+}
+.sb-close-btn:hover{background:#333;color:#fff}
+.sb-nav{display:flex;gap:5px}
+.sb-nav button{
+  width:30px;height:30px;border:1px solid #e0e0e0;background:#fff;border-radius:50%;
+  cursor:pointer;font-size:14px;color:#888;display:flex;align-items:center;justify-content:center;transition:all 0.15s;
+}
+.sb-nav button:hover:not(:disabled){background:#333;color:#fff;border-color:#333}
+.sb-nav button:disabled{opacity:0.25;cursor:default}
+
+.sb-body{padding:0 18px 36px}
+.sb-bloc{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#999;font-weight:600;margin-bottom:2px}
+.sb-title{font-size:26px;font-weight:700;color:#111;line-height:1.15;margin-bottom:2px}
+.sb-days{font-size:13px;color:#C4622D;font-weight:600;margin-bottom:16px}
+
+.sb-hero{width:100%;height:200px;border-radius:10px;overflow:hidden;margin-bottom:16px;background:#f5f5f5}
+.sb-hero img{width:100%;height:100%;object-fit:cover}
+
+.sb-alt{
+  display:inline-flex;align-items:center;gap:5px;
+  background:#f0f7f7;padding:5px 12px;border-radius:16px;
+  font-size:12px;font-weight:600;color:#2A6B6B;margin-bottom:18px;
+}
+
+.sb-section{font-size:13px;font-weight:700;color:#111;padding-bottom:6px;border-bottom:1px solid #eee;margin-bottom:10px;margin-top:20px}
+.sb-itin{display:flex;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px dashed #eee}
+.sb-itin-day{font-size:22px;font-weight:700;color:#C4622D;min-width:32px;line-height:1}
+.sb-itin-title{font-size:13px;font-weight:700;color:#222;margin-bottom:3px}
+.sb-itin-desc{font-size:12.5px;line-height:1.5;color:#555}
+
+.sb-tip{display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed #eee;font-size:12.5px;color:#555;line-height:1.5}
+.sb-tip-icon{flex-shrink:0;font-size:14px}
+
+.sb-budget{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.sb-budget-card{background:#f8f6f2;border-radius:8px;padding:12px;text-align:center}
+.sb-budget-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#999;font-weight:600}
+.sb-budget-val{font-size:20px;font-weight:700;color:#C4622D;margin-top:1px}
+.sb-budget-note{font-size:10px;color:#aaa;margin-top:2px}
+
+.sb-photos{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.sb-photos img{width:100%;height:100px;object-fit:cover;border-radius:6px;background:#f0f0f0}
+
+.custom-marker{
+  width:16px;height:16px;border-radius:50%;border:2.5px solid #fff;
+  box-shadow:0 1px 6px rgba(0,0,0,0.35);cursor:pointer;transition:transform 0.2s;position:relative;
+}
+.custom-marker:hover{transform:scale(1.4)}
+.custom-marker.active{animation:mp 1.2s ease infinite}
+@keyframes mp{
+  0%,100%{box-shadow:0 0 0 0 rgba(196,98,45,0.4),0 1px 6px rgba(0,0,0,0.35)}
+  50%{box-shadow:0 0 0 10px rgba(196,98,45,0),0 1px 6px rgba(0,0,0,0.35)}
+}
+
+.marker-label{
+  position:absolute;left:22px;top:50%;transform:translateY(-50%);
+  white-space:nowrap;font-family:'DM Sans',sans-serif;
+  font-size:12px;font-weight:600;color:#222;
+  text-shadow:1px 1px 2px #fff,-1px -1px 2px #fff,1px -1px 2px #fff,-1px 1px 2px #fff,0 0 6px #fff;
+  pointer-events:none;
+}
+
+.marker-tooltip{
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:#fff;border-radius:8px;padding:0;overflow:hidden;
+  box-shadow:0 4px 16px rgba(0,0,0,0.2);width:180px;pointer-events:none;opacity:0;transition:opacity 0.2s;
+}
+.custom-marker:hover .marker-tooltip{opacity:1}
+.marker-tooltip img{width:100%;height:90px;object-fit:cover;display:block}
+.marker-tooltip .tt-name{padding:6px 10px;font-size:12px;font-weight:600;color:#222}
+.marker-tooltip .tt-days{padding:0 10px 6px;font-size:10px;color:#999}
+
+@media(max-width:768px){
+  .sidebar{width:100%;top:auto;bottom:0;height:70vh;border-radius:14px 14px 0 0;
+    box-shadow:0 -4px 20px rgba(0,0,0,0.15);transform:translateY(100%)}
+  .sidebar.open{transform:translateY(0)}
+  .legend{bottom:16px;left:8px;padding:8px 12px;font-size:11px}
+}
+
+.leaflet-control-zoom{border:none!important;box-shadow:0 2px 8px rgba(0,0,0,0.15)!important}
+.leaflet-control-zoom a{background:#fff!important;color:#333!important;border:none!important;width:32px!important;height:32px!important;line-height:32px!important;font-size:16px!important;border-radius:0!important}
+.leaflet-control-zoom a:first-child{border-radius:8px 8px 0 0!important}
+.leaflet-control-zoom a:last-child{border-radius:0 0 8px 8px!important}
+.leaflet-control-attribution{font-size:9px!important;background:rgba(255,255,255,0.7)!important;padding:2px 6px!important}
+</style>
+</head>
+<body>
+
+<div class="title-bar">
+  <h1>Gran Circuito Sudamericano</h1>
+  <div class="sub">Argentina · Bolivia · Perú · Patagonia — 37 días · Sep–Oct 2026</div>
+</div>
+
+<div id="map"></div>
+
+<div class="legend">
+  <div class="legend-row"><div class="legend-line" style="background:#C4622D"></div>Parte 1 · Norte ARG → Perú</div>
+  <div class="legend-row"><div class="legend-line" style="background:#2A6B6B"></div>Parte 2 · Patagonia</div>
+  <div class="legend-row"><div class="legend-line" style="background:#3D6B8E;opacity:0.5;border-top:2px dashed #3D6B8E;height:0"></div>Vuelos de conexión</div>
+</div>
+
+<div class="sidebar" id="sidebar">
+  <div class="sb-close">
+    <div class="sb-nav">
+      <button id="prevBtn" onclick="nav(-1)">‹</button>
+      <button id="nextBtn" onclick="nav(1)">›</button>
+    </div>
+    <button class="sb-close-btn" onclick="closeSidebar()">✕</button>
+  </div>
+  <div class="sb-body" id="sbBody"></div>
+</div>
+
+<script>
+const D=[
+  {id:"salta",name:"Salta",bloc:"Bloque 1 · Norte Argentino",days:"Día 1",part:1,lat:-24.7829,lng:-65.4232,alt:"1.187m",color:"#C4622D",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Cabildo_de_Salta.jpg/1280px-Cabildo_de_Salta.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Catedral_de_Salta_de_noche.jpg/800px-Catedral_de_Salta_de_noche.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/San_Bernardo_Salta.JPG/1280px-San_Bernardo_Salta.JPG"],
+    itin:[{day:"1",t:"Llegada + City Tour",d:"Vuelo BA→Salta. Plaza 9 de Julio, Catedral, Museo de Alta Montaña (momias incas a 6.700m), teleférico Cerro San Bernardo. Noche: peña folclórica en calle Balcarce."}],
+    tips:[["🍷","Torrontés salteño: el vino blanco emblemático"],["🥟","Empanadas salteñas al horno: las mejores del país"],["💡","Museo de Alta Montaña — ir sin spoilers"],["🌡️","Septiembre: 8–24°C, seco y agradable"]],
+    bud:{eco:"$30–60",mid:"$80–130",note:"por persona/día"}},
+  {id:"humahuaca",name:"Quebrada de Humahuaca",bloc:"Bloque 1 · Norte Argentino",days:"Días 2–3",part:1,lat:-23.2015,lng:-65.3509,alt:"2.400–4.170m",color:"#C4622D",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Cerro_de_los_Siete_Colores.jpg/1280px-Cerro_de_los_Siete_Colores.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Salinas_Grandes%2C_Jujuy.jpg/1280px-Salinas_Grandes%2C_Jujuy.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Hornocalx14colores.jpg/1280px-Hornocalx14colores.jpg"],
+    itin:[{day:"2",t:"Quebrada completa",d:"Purmamarca (Cerro 7 Colores, Paseo de los Colorados), Maimará, Tilcara (Pucará), Humahuaca. Opcional: Hornocal (4.300m)."},{day:"3",t:"Salinas Grandes + La Quiaca",d:"Cuesta de Lipán (4.170m), Salinas Grandes — fotos perspectiva. Tarde: bus a La Quiaca."}],
+    tips:[["📸","Salinas: llevar objetos para fotos de perspectiva forzada"],["🏔️","Hornocal en 4x4 — espectacular con cielo limpio"],["🫖","Mate de coca desde el día 2"],["🧶","Purmamarca: mejor feria artesanal de la Quebrada"]],
+    bud:{eco:"$40–70",mid:"$90–150",note:"por persona/día"}},
+  {id:"uyuni",name:"Salar de Uyuni",bloc:"Bloque 2 · Bolivia",days:"Días 4–7",part:1,lat:-20.4607,lng:-66.8253,alt:"3.650–5.000m",color:"#C4622D",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Salar_Uyuni_au_coucher_du_soleil.jpg/1280px-Salar_Uyuni_au_coucher_du_soleil.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Laguna_Colorada%2C_Bolivia.jpg/1280px-Laguna_Colorada%2C_Bolivia.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Laguna_Verde_Bolivia.jpg/1280px-Laguna_Verde_Bolivia.jpg"],
+    itin:[{day:"4",t:"Cruce frontera → Uyuni",d:"La Quiaca→Villazón (DNI). Bus o tren 7–9h."},{day:"5",t:"Salar · Día 1",d:"Cementerio de Trenes, Colchani, Salar infinito, Isla Incahuasi, atardecer. Hotel de sal."},{day:"6",t:"Lagunas · Día 2",d:"Volcán Ollagüe, lagunas altiplánicas, Árbol de Piedra, Laguna Colorada. Refugio 4.300m, -20°C."},{day:"7",t:"Géiseres · Día 3",d:"Sol de Mañana (4:30am), Termas de Polques, Desierto Dalí, Laguna Verde/Blanca."}],
+    tips:[["🧊","Refugio -20°C — bolsa de dormir extra $6"],["🕶️","FPS 50+: la sal refleja 80% UV"],["🏢","Agencias: Red Planet, Salty Desert, Hodaka"],["🩱","Traje de baño para Termas de Polques"]],
+    bud:{eco:"$120–180",mid:"$200–300",note:"por persona · tour 3d incluido"}},
+  {id:"lapaz",name:"La Paz",bloc:"Bloque 2 · Bolivia",days:"Días 8–10",part:1,lat:-16.4897,lng:-68.1193,alt:"3.640m",color:"#C4622D",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/La_Paz%2C_Bolivia.jpg/1280px-La_Paz%2C_Bolivia.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Valle_de_la_Luna_La_Paz.jpg/1280px-Valle_de_la_Luna_La_Paz.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Plaza_Murillo_La_Paz.jpg/1280px-Plaza_Murillo_La_Paz.jpg"],
+    itin:[{day:"8",t:"Llegada + descanso",d:"Bus nocturno desde Uyuni. Recuperación, mate de coca."},{day:"9",t:"La Paz completa",d:"Teleféricos (10 líneas, $0.30), Mercado Brujas, Plaza Murillo, Valle de la Luna."},{day:"10",t:"→ Copacabana → Puno",d:"Bus a Copacabana (Titicaca), cruce Tiquina, frontera Kasani, bus Puno."}],
+    tips:[["🚡","Teleféricos: cruzar la ciudad por el aire, $0.30"],["🥘","Salteñas en el mercado: mejor desayuno boliviano"],["💰","País más barato del circuito"],["⚡","Día 8 = descanso obligatorio post-Salar"]],
+    bud:{eco:"$25–40",mid:"$50–90",note:"por persona/día"}},
+  {id:"arequipa",name:"Arequipa",bloc:"Bloque 3 · Perú Sur",days:"Días 11–12, 14",part:1,lat:-16.4090,lng:-71.5375,alt:"2.335m",color:"#C4622D",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Plaza_de_Armas_de_Arequipa.jpg/1280px-Plaza_de_Armas_de_Arequipa.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Misti_volcano.jpg/1280px-Misti_volcano.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Monasterio_de_Santa_Catalina%2C_Arequipa.jpg/800px-Monasterio_de_Santa_Catalina%2C_Arequipa.jpg"],
+    itin:[{day:"11",t:"Puno → Arequipa",d:"Bus 6–7h (vicuñas, volcanes). Plaza de Armas, centro de sillar blanco."},{day:"12",t:"City tour + gastronomía",d:"Monasterio Santa Catalina ($12, 2–3h). Yanahuara. Cena: rocoto relleno, chupe de camarones."}],
+    tips:[["🏛️","Santa Catalina: ciudad dentro de la ciudad — 2–3h mínimo"],["🍽️","Mejor gastronomía de Perú después de Lima"],["😌","A 2.335m el cuerpo descansa"],["🌋","Desde Yanahuara: Misti, Chachani, Pichu Pichu"]],
+    bud:{eco:"$35–55",mid:"$70–120",note:"por persona/día"}},
+  {id:"colca",name:"Cañón del Colca",bloc:"Bloque 3 · Perú Sur",days:"Días 13–14",part:1,lat:-15.6086,lng:-71.8867,alt:"2.335–4.910m",color:"#C4622D",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Condor_flying_over_the_Colca_canyon_in_Peru.jpg/1280px-Condor_flying_over_the_Colca_canyon_in_Peru.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Colca_canyon.jpg/1280px-Colca_canyon.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Colca_terraces.jpg/1280px-Colca_terraces.jpg"],
+    itin:[{day:"13",t:"Arequipa → Colca",d:"Pampa Cañahuas (vicuñas), Patapampa (4.910m), Chivay. Termas La Calera ($4)."},{day:"14",t:"Cruz del Cóndor + regreso",d:"Cóndores desde 3.400m prof. (doble del Gran Cañón). Pueblos coloniales. Regreso Arequipa."}],
+    tips:[["🦅","Septiembre = época seca = mejores chances de cóndores"],["♨️","Termas La Calera después de la subida a 4.910m"],["🎒","Solo mochila 20L — equipaje en Arequipa"],["💰","Tour ~$30–55/pers + boleto S/40"]],
+    bud:{eco:"$55–80",mid:"$90–150",note:"por persona · tour 2d"}},
+  {id:"cusco",name:"Cusco",bloc:"Bloque 4 · Cusco Imperial",days:"Días 15–17, 19–22",part:1,lat:-13.5320,lng:-71.9675,alt:"3.400m",color:"#C4622D",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Cusco_Plaza_de_Armas%2C_Per%C3%BA.jpg/1280px-Cusco_Plaza_de_Armas%2C_Per%C3%BA.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Moray_Cusco_Per%C3%BA.jpg/1280px-Moray_Cusco_Per%C3%BA.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Maras_Peru_Salineras.jpg/1280px-Maras_Peru_Salineras.jpg"],
+    itin:[{day:"15",t:"Vuelo AQP→CUS",d:"Vuelo 1h. Mercado San Pedro, Plaza de Armas, mate de coca."},{day:"16",t:"City tour",d:"Qorikancha, Catedral, San Blas (piedra 12 ángulos), Sacsayhuamán."},{day:"17",t:"Valle Sagrado",d:"Pisac → Moray → Salineras de Maras → Ollantaytambo. Dormir Ollantaytambo."},{day:"20",t:"Descanso pre-Vinicunca",d:"San Blas, chocolaterías. Preparar ropa abrigo."}],
+    tips:[["🎫","Boleto turístico ~$20–25 = 16 sitios"],["🏔️","Dormir Ollantaytambo día 17 → tren a MP"],["🧂","Salineras de Maras: highlight del viaje"],["🍫","Chocolate cusqueño con coca = souvenir perfecto"]],
+    bud:{eco:"$35–55",mid:"$70–130",note:"por persona/día"}},
+  {id:"machupicchu",name:"Machu Picchu",bloc:"Bloque 4 · Maravilla del Mundo",days:"Días 18–19",part:1,lat:-13.1631,lng:-72.5450,alt:"2.430m",color:"#C4622D",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Machu_Picchu%2C_Peru.jpg/1280px-Machu_Picchu%2C_Peru.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Before_Machu_Picchu.jpg/1280px-Before_Machu_Picchu.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Aguas_Calientes_Peru.jpg/1280px-Aguas_Calientes_Peru.jpg"],
+    itin:[{day:"18",t:"MACHU PICCHU",d:"Tren Ollantaytambo→Aguas Calientes (1h45). Bus $24 i/v. Circuito 2A: foto Casa del Guardián + sector urbano. 2.5–3h."},{day:"19",t:"Regreso a Cusco",d:"Segunda visita o termas ($5). Tren regreso."}],
+    tips:[["🔴","RESERVAR 2–3 MESES ANTES en tuboleto.cultura.pe"],["🚂","PeruRail Expedition ~$60–80/tramo"],["☁️","Septiembre = seco = cielo despejado"],["📷","Circuito 2A = LA foto icónica"]],
+    bud:{eco:"$160–200",mid:"$220–320",note:"por persona · entrada+tren+bus+hotel"}},
+  {id:"vinicunca",name:"Vinicunca",bloc:"Bloque 4 · Montaña Arcoíris",days:"Día 21",part:1,lat:-13.8700,lng:-71.3026,alt:"5.200m ▲ CIMA",color:"#C4622D",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Rainbow_Mountain_Peru.jpg/1280px-Rainbow_Mountain_Peru.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Ausangate.jpg/1280px-Ausangate.jpg"],
+    itin:[{day:"21",t:"Montaña de Siete Colores",d:"Tour $35–50. Sale 4am. Caminata 1.5–2h a 5.200m. Franjas minerales + Ausangate nevado. Alt: Palcoyo (4.900m, 1km)."}],
+    tips:[["⛰️","3 semanas aclimatando = óptimo, pero ir despacio"],["🐴","Caballo ~$15–20 para parte del ascenso"],["🌅","Sale 4am — acostarse temprano"],["🍃","Coca + oxígeno de emergencia incluido"]],
+    bud:{eco:"$35–50",mid:"$50–75",note:"por persona · todo incluido"}},
+  {id:"lima",name:"Lima",bloc:"Bloque 5 · Transición",days:"Día 23",part:1,lat:-12.0464,lng:-77.0428,alt:"0m — reset total",color:"#C4622D",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Costa_Verde%2C_Miraflores.jpg/1280px-Costa_Verde%2C_Miraflores.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Parque_del_Amor_Lima.jpg/1280px-Parque_del_Amor_Lima.jpg"],
+    itin:[{day:"23",t:"Cusco → Lima → BA",d:"Vuelo 1h20. Si hay tiempo: Miraflores, ceviche en Barranco. Vuelo Lima→BA."}],
+    tips:[["🐟","3+ horas de escala: ceviche en Barranco obligatorio"],["✈️","Lima→BA: LATAM/JetSmart/Sky, 4h30, $130–200/pers"],["😌","Nivel del mar después de 3 semanas a altitud"]],
+    bud:{eco:"$40–80",mid:"$80–150",note:"por persona · vuelos+comida"}},
+  {id:"bariloche",name:"Bariloche",bloc:"Parte 2 · Base Patagónica",days:"Días 25–31, 37+",part:2,lat:-41.1335,lng:-71.3103,alt:"770m",color:"#2A6B6B",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Bariloche-_Argentina2.jpg/1280px-Bariloche-_Argentina2.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Cerro_Campanario_San_Carlos_de_Bariloche.jpg/1280px-Cerro_Campanario_San_Carlos_de_Bariloche.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Bosque_de_Arrayanes.jpg/1280px-Bosque_de_Arrayanes.jpg"],
+    itin:[{day:"25",t:"Llegada",d:"Vuelo BA→BRC 2h10 (desde $28). Casa de amigos. Centro Cívico, calle Mitre, cerveza."},{day:"26",t:"Cerro Otto + cervecerías",d:"Teleférico $33–40, confitería giratoria. Manush, Berlina, Wesley, Blest."},{day:"27",t:"Circuito Chico",d:"Bus 20. Campanario (mejor mirador, Nat Geo). Llao Llao. Cervecería Patagonia."},{day:"28",t:"Isla Victoria + Arrayanes",d:"Navegación (~$100). Bosque de Arrayanes: inspiración de Bambi."},{day:"29",t:"7 Lagos",d:"Excursión $40–50. Lagos Correntoso, Espejo, Hermoso, Lácar. San Martín de los Andes."},{day:"30",t:"Catedral o El Bolsón",d:"Catedral: telecabina $22. O El Bolsón: feria + cervecerías."}],
+    tips:[["🍺","Mayor densidad de cervecerías artesanales de Argentina"],["🚌","SUBE obligatoria. Línea 20 y 55 cubren todo"],["🏠","Alojamiento $0 con amigos = ahorro $500–1.800"],["🍫","Mamuschka vs Rapa Nui: probar ambos"],["⏰","Octubre: 2–14°C, menos turistas que verano"]],
+    bud:{eco:"$20–40",mid:"$50–80",note:"por persona/día · SIN alojamiento"}},
+  {id:"calafate",name:"El Calafate",bloc:"Parte 2 · Glaciares",days:"Días 32–33, 36–37",part:2,lat:-50.3401,lng:-72.2648,alt:"200m",color:"#2A6B6B",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Perito_Moreno_Glacier_Patagonia_Argentina_Luca_Galuzzi_2005.JPG/1280px-Perito_Moreno_Glacier_Patagonia_Argentina_Luca_Galuzzi_2005.JPG",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Upsala_Glacier.jpg/1280px-Upsala_Glacier.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Lago_Argentino_El_Calafate.jpg/1280px-Lago_Argentino_El_Calafate.jpg"],
+    itin:[{day:"32",t:"Vuelo BRC→FTE",d:"Aerolíneas 1h45 (i/v ~$140–150). Costanera Lago Argentino, Laguna Nimez ($5)."},{day:"33",t:"PERITO MORENO",d:"Excursión $50–65 + entrada $42. Pasarelas 5.5km. Premium: Minitrekking $290–320. Safari Náutico $58."},{day:"36–37",t:"Regreso + vuelo",d:"Bus desde Chaltén. Última noche. Vuelo FTE→BRC."}],
+    tips:[["🔴","Vuelo BRC↔FTE: SOLO mié/vie/dom — RESERVAR PRIMERO"],["🧊","Minitrekking: 1.5h sobre glaciar con grampones"],["🌬️","Viento CONSTANTE — cortaviento impermeable esencial"],["💰","Entrada: $42 extranjeros, $14 residentes"]],
+    bud:{eco:"$80–130",mid:"$180–350",note:"por persona/día"}},
+  {id:"chalten",name:"El Chaltén",bloc:"Parte 2 · Capital del Trekking",days:"Días 34–36",part:2,lat:-49.3315,lng:-72.8862,alt:"400–1.200m",color:"#2A6B6B",
+    hero:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Fitz_Roy_from_Laguna_de_los_Tres.jpg/1280px-Fitz_Roy_from_Laguna_de_los_Tres.jpg",
+    photos:["https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Cerro_Torre.jpg/800px-Cerro_Torre.jpg","https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/El_Chalten_Argentina.jpg/1280px-El_Chalten_Argentina.jpg"],
+    itin:[{day:"34",t:"Bus + trek corto",d:"Bus 3h ($25–35). Centro de Visitantes. Mirador Cóndores (3km) o Chorrillo del Salto (6km)."},{day:"35",t:"LAGUNA DE LOS TRES",d:"25km i/v, 8–9h. Fitz Roy reflejado en laguna turquesa. Alt: Laguna Capri (12km, 3–4h)."},{day:"36",t:"Segundo trek + regreso",d:"Laguna Torre (18km, Cerro Torre) o Pliegue Tumbado (19km, 360°). Bus tarde a Calafate."}],
+    tips:[["🥾","Botas Gore-Tex impermeables obligatorias"],["🏧","UN cajero en todo el pueblo — llevar efectivo"],["📋","Entrada $42/día — ventaweb.apn.gob.ar"],["🌤️","Octubre = reapertura, todo operativo"],["💧","2L agua + comida por trekking"]],
+    bud:{eco:"$70–100",mid:"$120–200",note:"por persona/día"}}
+];
+
+// MAP
+const map=L.map('map',{center:[-28,-66],zoom:4,zoomControl:true,minZoom:3,maxZoom:17});
+
+L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
+  maxZoom:17,attribution:'© <a href="https://opentopomap.org">OpenTopoMap</a> · © OpenStreetMap'
+}).addTo(map);
+
+// Routes
+const r1=D.filter(d=>d.part===1).map(d=>[d.lat,d.lng]);
+L.polyline(r1,{color:'#C4622D',weight:3,opacity:0.8,dashArray:'8 5'}).addTo(map);
+
+const lima=D.find(d=>d.id==='lima'),bari=D.find(d=>d.id==='bariloche');
+L.polyline([[lima.lat,lima.lng],[-34.6037,-58.3816],[bari.lat,bari.lng]],{color:'#3D6B8E',weight:1.5,opacity:0.4,dashArray:'6 6'}).addTo(map);
+
+const cala=D.find(d=>d.id==='calafate'),chal=D.find(d=>d.id==='chalten');
+L.polyline([[bari.lat,bari.lng],[cala.lat,cala.lng],[chal.lat,chal.lng]],{color:'#2A6B6B',weight:3,opacity:0.8,dashArray:'8 5'}).addTo(map);
+L.polyline([[chal.lat,chal.lng],[cala.lat,cala.lng],[bari.lat,bari.lng]],{color:'#2A6B6B',weight:1.5,opacity:0.3,dashArray:'3 6'}).addTo(map);
+
+// BA transit marker
+L.marker([-34.6037,-58.3816],{icon:L.divIcon({className:'',html:'<div style="width:10px;height:10px;border-radius:50%;background:#3D6B8E;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);opacity:0.6"></div>',iconSize:[10,10],iconAnchor:[5,5]})}).addTo(map).bindTooltip('Buenos Aires (tránsito)',{direction:'right',offset:[8,0]});
+
+// Markers
+D.forEach((d,i)=>{
+  const icon=L.divIcon({className:'',html:`<div class="custom-marker" id="mk-${i}" style="background:${d.color}"><div class="marker-label">${d.name.replace(/\n/g,' ')}</div><div class="marker-tooltip"><img src="${d.hero}" onerror="this.style.display='none'"><div class="tt-name">${d.name.replace(/\n/g,' ')}</div><div class="tt-days">${d.days} · ${d.alt}</div></div></div>`,iconSize:[16,16],iconAnchor:[8,8]});
+  L.marker([d.lat,d.lng],{icon}).addTo(map).on('click',()=>openSB(i));
+});
+
+// SIDEBAR
+let cur=-1;
+function openSB(i){
+  cur=i;const d=D[i],sb=document.getElementById('sidebar'),body=document.getElementById('sbBody');
+  document.getElementById('prevBtn').disabled=i<=0;
+  document.getElementById('nextBtn').disabled=i>=D.length-1;
+  D.forEach((_,j)=>{const el=document.getElementById(`mk-${j}`);if(el)el.classList.toggle('active',j===i)});
+  let h=`<div class="sb-bloc">${d.bloc}</div><div class="sb-title">${d.name}</div><div class="sb-days">${d.days}</div>`;
+  h+=`<div class="sb-hero"><img src="${d.hero}" onerror="this.parentElement.style.background='linear-gradient(135deg,#eee,#ddd)';this.remove()"></div>`;
+  h+=`<div class="sb-alt">⛰ ${d.alt}</div>`;
+  if(d.itin.length){h+=`<div class="sb-section">Itinerario</div>`;d.itin.forEach(it=>{h+=`<div class="sb-itin"><div class="sb-itin-day">${it.day}</div><div><div class="sb-itin-title">${it.t}</div><div class="sb-itin-desc">${it.d}</div></div></div>`})}
+  if(d.tips.length){h+=`<div class="sb-section">Tips & Recomendaciones</div>`;d.tips.forEach(([ic,tx])=>{h+=`<div class="sb-tip"><span class="sb-tip-icon">${ic}</span><span>${tx}</span></div>`})}
+  if(d.bud){h+=`<div class="sb-section">Presupuesto</div><div class="sb-budget"><div class="sb-budget-card"><div class="sb-budget-label">Económico</div><div class="sb-budget-val">${d.bud.eco}</div><div class="sb-budget-note">${d.bud.note}</div></div><div class="sb-budget-card"><div class="sb-budget-label">Medio-alto</div><div class="sb-budget-val">${d.bud.mid}</div><div class="sb-budget-note">${d.bud.note}</div></div></div>`}
+  if(d.photos.length){h+=`<div class="sb-section">Galería</div><div class="sb-photos">`;d.photos.forEach(p=>{h+=`<img src="${p}" loading="lazy" onerror="this.style.background='#eee'">`});h+=`</div>`}
+  body.innerHTML=h;sb.classList.add('open');sb.scrollTop=0;
+  map.flyTo([d.lat,d.lng],d.id==='bariloche'||d.id==='calafate'||d.id==='chalten'?7:6,{duration:0.8});
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  D.forEach((_,j)=>{const el=document.getElementById(`mk-${j}`);if(el)el.classList.remove('active')});
+  cur=-1;map.flyTo([-28,-66],4,{duration:0.8});
+}
+function nav(dir){const n=cur+dir;if(n>=0&&n<D.length)openSB(n)}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSidebar();if(e.key==='ArrowRight'||e.key==='ArrowDown'){e.preventDefault();nav(1)}if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();nav(-1)}});
+</script>
+</body>
+</html>
